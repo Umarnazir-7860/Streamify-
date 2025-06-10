@@ -5,7 +5,7 @@ import { Link } from "react-router";
 const FriendCard = ({ friend }) => {
   return (
     <div className="card bg-base-200 hover:shadow-md transition-shadow">
-      <div className="card-body p-4">
+      <div className="card-body p-4 border border-white-400 rounded-xl ">
         {/* User Info  */}
         <div className="flex items-center gap-3 mb-3 ">
           <div className="avatar size-12">

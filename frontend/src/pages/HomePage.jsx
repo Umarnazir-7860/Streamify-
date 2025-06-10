@@ -131,7 +131,7 @@ useEffect(() => {
 
         <section>
           <div className="mb-6 sm:mb-8">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between  gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
                   Meet New Learners
@@ -145,7 +145,7 @@ useEffect(() => {
           </div>
 
           {loadingUsers ? (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center py-12 ">
               <span className="loading loading-spinner loading-lg" />
             </div>
           ) : recommendedUsers.length === 0 ? (
@@ -158,13 +158,13 @@ useEffect(() => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
               {recommendedUsers.map((user) => {
                 const hasRequestBeenSent = outgoingRequest.has(user._id);
                 return (
                   <div
                     key={user._id}
-                    className="card bg-base-200 hover:shadow-lg transition-all duration-300"
+                    className="card bg-base-200 hover:shadow-lg border border-white-400 rounded-xl transition-all duration-300"
                   >
                     <div className="card-body p-5 space-y-4">
                       <div className="flex items-center gap-3">
