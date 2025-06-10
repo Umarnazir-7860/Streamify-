@@ -1,13 +1,31 @@
 import { Link, useLocation } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { BellIcon, HomeIcon, ShipWheelIcon, UsersIcon } from "lucide-react";
-
+import { useEffect, useState } from "react";
 const Sidebar = () => {
   const { authUser } = useAuthUser();
   const location = useLocation();
   const currentPath = location.pathname;
   console.log("Current Path:", currentPath);
+const [hasUnseenNotifications, setHasUnseenNotifications] = useState(false);
 
+
+useEffect(() => {
+  const seen = localStorage.getItem("notificationsSeen");
+  setHasUnseenNotifications(!seen);
+
+  // Optional: Listen to localStorage changes from other tabs
+  const handleStorageChange = () => {
+    const seenNow = localStorage.getItem("notificationsSeen");
+    setHasUnseenNotifications(!seenNow);
+  };
+
+  window.addEventListener("storage", handleStorageChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorageChange);
+  };
+}, []);
   return (
     <aside className="w-64 bg-base-200 border-r border-base-300 hidden lg:flex flex-col  h-screen sticky top-0">
       <div className="p-5 border-b border-base-300">
@@ -42,15 +60,22 @@ const Sidebar = () => {
           <span>Friends</span>
         </Link>
 
-        <Link
-          to="/notifications"
-          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
-            currentPath === "/notifications" ? "btn-active" : ""
-          }`}
-        >
-          <BellIcon className="size-5 text-base-content opacity-70" />
-          <span>Notifications</span>
-        </Link>
+   <Link
+  to="/notification"
+  className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+    currentPath === "/notifications" ? "btn-active" : ""
+  }`}
+>
+  <div className="relative">
+    <BellIcon className="size-5 text-base-content opacity-70" />
+    
+    {hasUnseenNotifications && (
+      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500" />
+    )}
+  </div>
+  <span>Notifications</span>
+</Link>
+
       </nav>
       {/* User Profile Section */}
       <div className="p-4 border-t border-base-300 mt-auto">
