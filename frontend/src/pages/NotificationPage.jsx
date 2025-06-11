@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import NoNotificationsFound from "../components/NoNotificationsFound";
 import { useEffect } from "react";
+import toast from "react-hot-toast";
 
 const NotificationsPage = () => {
   const queryClient = useQueryClient();
@@ -23,6 +24,7 @@ const NotificationsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
       queryClient.invalidateQueries({ queryKey: ["friends"] });
+      toast.success("Friend Request Accepted");
     },
   });
 
@@ -33,10 +35,49 @@ const NotificationsPage = () => {
   );
   const totalNotifications = incomingRequests.length + acceptedRequests.length;
 
-  useEffect(() => {
-    // Mark notifications as seen when user opens this page
-    localStorage.setItem("notificationsSeen", "true");
-  }, []);
+useEffect(() => {
+ const markSeen = async () => {
+  try {
+    const res = await fetch("http://localhost:5001/api/users/friend-requests/mark-seen", {
+      method: "PUT",
+      credentials: "include", // if your backend uses cookies/auth
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      // log details for debugging
+      const text = await res.text();
+      console.error("Server responded with error:", res.status, text);
+      return;
+    }
+
+    const data = await res.json();
+
+    if (!Array.isArray(data)) {
+      console.warn("Expected array but got:", data);
+      return;
+    }
+
+    const updated = data.map((n) => ({
+      ...n,
+      type: n.status === "accepted" ? "friend_accept" : "friend_request",
+      seen: false,
+    }));
+
+    localStorage.setItem("friendRequestNotifications", JSON.stringify(updated));
+    window.dispatchEvent(new Event("storage"));
+
+  } catch (error) {
+    console.error("Polling error:", error);
+  }
+};
+
+  markSeen();
+}, []);
+
+ 
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">

@@ -1,8 +1,7 @@
 import { Navigate, Route, Routes } from "react-router";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
-import CallPage from "./pages/CallPage";
-import NotificationPage from "./pages/NotificationPage";
+import CallPage from "./pages/CallPage";import NotificationPage from "./pages/NotificationPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ChatPage from "./pages/ChatPage";
 import SignupPage from "./pages/SignupPage";
@@ -11,7 +10,13 @@ import PageLoader from "./components/PageLoader";
 import useAuthUser from "./hooks/useAuthUser";
 import Layout from "./components/Layout";
 import { useThemeStore } from "./store/useThemeStore";
+import useFriendRequestPolling from "./hooks/useFriendRequestPolling";
+import ChatListPage from "./components/ChatListPage";
+
 function App() {
+   // ✅ Enable polling
+  useFriendRequestPolling();
+
   //tanstack query
   const { isLoading, authUser } = useAuthUser();
   const isAuthenticated = Boolean(authUser);
@@ -92,7 +97,8 @@ function App() {
             )
           }
         />
-        
+        <Route path="/chats" element={<ChatListPage />} />
+
           <Route
             path="/notification"
             element={

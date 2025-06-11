@@ -16,10 +16,14 @@ const friendRequestSchema = new mongoose.Schema(
       type: String,
       enum: ['pending', 'accepted', 'rejected'],
       default: 'pending',
+    },
+    seen: {
+      type: Boolean,
+      default: false, // 👈 this is what enables unseen notification tracking
     }
   },
   {
-    timestamps: true, // automatically adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 

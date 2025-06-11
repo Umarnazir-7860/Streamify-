@@ -31,10 +31,10 @@ export async function getMyFriends(req, res) {
   }
 }
 export async function sendFriendRequest(req, res) {
-   console.log("sendFriendRequest called with params:", req.params.id);
+  console.log("sendFriendRequest called with params:", req.params.id);
   try {
     const myId = req.user.id;
-   const receiverId = req.params.id;
+    const receiverId = req.params.id;
 
     if (myId === receiverId) {
       return res
@@ -62,14 +62,24 @@ export async function sendFriendRequest(req, res) {
         .status(400)
         .json({ message: "Friend request already exists." });
     }
-    const friendRequest = await FriendRequest.create({
-      sender: myId,
-      receiver: receiverId,
-    });
-    res.status(201).json({
-      message: "Friend request sent successfully.",
-      friendRequest,
-    });
+   const friendRequest = await FriendRequest.create({
+  sender: myId,
+  receiver: receiverId,
+  seen: false
+});
+
+// ✅ Ye line ADD karo
+const populatedRequest = await friendRequest.populate(
+  "sender",
+  "fullName profilePic nativeLanguage learningLanguage"
+);
+
+// ✅ Ab populated result return karo
+res.status(201).json({
+  message: "Friend request sent successfully.",
+  friendRequest: populatedRequest,
+});
+
   } catch (error) {
     console.error("Error sending friend request:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -114,13 +124,12 @@ export async function acceptFriendRequest(req, res) {
 
 export async function getFriendRequests(req, res) {
   try {
-    const incommingReqs = await FriendRequest.find({
-      receiver: req.user.id,
-      status: "pending",
-    }).populate(
-      "sender",
-      "fullName profilePic nativeLanguage learningLanguage"
-    );
+  const incommingReqs = await FriendRequest.find({
+  receiver: req.user.id,
+  status: "pending",
+}).populate("sender", "fullName profilePic nativeLanguage learningLanguage"); // ✅ required
+console.log("Friend Requests Backend:", incommingReqs);
+
     const acceptedReqs = await FriendRequest.find({
       receiver: req.user.id,
       status: "accepted",
@@ -149,3 +158,35 @@ export async function getOutgoingFriendReqs(req, res) {
     res.status(500).json({ message: "Internal server error" });
   }
 }
+export const getUnseenFriendRequests = async (req, res) => {
+  try {
+    const unseenRequests = await FriendRequest.find({
+      receiver: req.user._id, // ✅ FIXED
+      seen: false,
+    });
+
+    res.status(200).json(unseenRequests);
+  } catch (err) {
+    console.error("Error fetching unseen friend requests:", err);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export const markFriendRequestsAsSeen = async (req, res) => {
+  try {
+    const unseenRequests = await FriendRequest.find({
+      receiver: req.user._id,
+      seen: false,
+    });
+
+    await FriendRequest.updateMany(
+      { receiver: req.user._id, seen: false },
+      { $set: { seen: true } }
+    );
+
+    res.status(200).json(unseenRequests); // ✅ MUST be an array
+  } catch (err) {
+    console.error("❌ Error in markFriendRequestsAsSeen:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

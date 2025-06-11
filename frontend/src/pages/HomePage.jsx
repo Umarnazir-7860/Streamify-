@@ -64,7 +64,7 @@ const HomePage = () => {
 
       const isAlreadySent =
         error?.response?.data?.message === "Friend request already exists.";
-
+        toast.success("Friend request already exists in your notifications.")
       if (isAlreadySent) {
         // Agar request already exist karti hai, to disable hi rehne do
         setOutgoingRequest((prev) => new Set(prev).add(userId));
