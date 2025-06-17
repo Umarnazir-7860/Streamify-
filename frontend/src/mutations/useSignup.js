@@ -85,3 +85,21 @@ export async function getStreamToken() {
   const response = await axiosInstance.get("/chat/token");
   return response.data;
 }
+export const getMyFriends = async () => {
+  try {
+    const response = await axiosInstance.get("/users/friends");
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch friends", error);
+    throw error;
+  }
+};
+
+export const updateUserProfile = async (formData) => {
+  const response = await axiosInstance.put("/users/update", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data", // required for file upload
+    },
+  });
+  return response.data;
+};

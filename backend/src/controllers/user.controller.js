@@ -1,6 +1,6 @@
 import { FriendRequest } from "../Models/friend-request.models.js";
 import { User } from "../models/user.models.js";
-
+import { Group } from "../Models/groups.models.js";
 export async function getRecommendedUsers(req, res) {
   try {
     const currentUserId = req.user.id;
@@ -112,15 +112,21 @@ export async function acceptFriendRequest(req, res) {
       $addToSet: { friends: friendRequest.sender },
     });
 
+    // ✅ Populate sender and recipient for frontend
+    const populatedRequest = await friendRequest
+      .populate("sender", "fullName profilePic")
+      .populate("recipient", "fullName profilePic");
+
     res.status(200).json({
       message: "Friend request accepted successfully.",
-      friendRequest,
+      friendRequest: populatedRequest,
     });
   } catch (error) {
     console.error("Error accepting friend request:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
+
 
 export async function getFriendRequests(req, res) {
   try {
@@ -177,16 +183,83 @@ export const markFriendRequestsAsSeen = async (req, res) => {
     const unseenRequests = await FriendRequest.find({
       receiver: req.user._id,
       seen: false,
-    });
+    }).populate("sender", "fullName profilePic"); // ✅ Populate sender
 
     await FriendRequest.updateMany(
       { receiver: req.user._id, seen: false },
       { $set: { seen: true } }
     );
 
-    res.status(200).json(unseenRequests); // ✅ MUST be an array
+    res.status(200).json(unseenRequests); // Now includes fullName etc.
   } catch (err) {
     console.error("❌ Error in markFriendRequestsAsSeen:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+export const createGroup = async (req, res) => {
+  try {
+    const { name, members } = req.body;
+
+    if (!name || !members || !members.length) {
+      return res.status(400).json({ message: "Name and members are required" });
+    }
+
+    // Add the creator as a member (if not already)
+    const uniqueMembers = [...new Set([...members, req.user._id.toString()])];
+
+    const group = await Group.create({
+      name,
+      members: uniqueMembers,
+      admins: [req.user._id], // ✅ Creator is admin
+      createdBy: req.user._id,
+    });
+
+    res.status(201).json(group);
+  } catch (err) {
+    console.error("Error creating group:", err);
+    res.status(500).json({ message: "Failed to create group" });
+  }
+};
+
+export const removeMember = async (req, res) => {
+  const { groupId, userId } = req.params;
+
+  const group = await Group.findById(groupId);
+
+  if (!group) return res.status(404).json({ message: "Group not found" });
+
+  // ✅ Check if the requestor is an admin
+  if (!group.admins.includes(req.user._id.toString())) {
+    return res.status(403).json({ message: "Only admins can remove members" });
+  }
+
+  group.members = group.members.filter(
+    (memberId) => memberId.toString() !== userId
+  );
+
+  await group.save();
+  res.status(200).json({ message: "Member removed" });
+};
+
+export const editProfile=  async (req, res) => {
+    const { fullName, bio } = req.body;
+    const profilePic = req.file?.path || req.user.profilePic;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { fullName, bio, profilePic },
+      { new: true }
+    );
+
+   res.json({
+  _id: updatedUser._id,
+  fullName: updatedUser.fullName,
+  bio: updatedUser.bio,
+   profilePic: updatedUser.profilePic.startsWith("http")
+    ? updatedUser.profilePic
+    : `${BASE_URL}/${updatedUser.profilePic}`, // ✅ make it absolute
+});
+
+  }

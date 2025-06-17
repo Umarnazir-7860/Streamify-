@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { acceptFriendRequest, getFriendRequests } from "../mutations/useSignup";
-
 import {
   BellIcon,
   ClockIcon,
@@ -8,11 +7,12 @@ import {
   UserCheckIcon,
 } from "lucide-react";
 import NoNotificationsFound from "../components/NoNotificationsFound";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 const NotificationsPage = () => {
   const queryClient = useQueryClient();
+  const [unseenCount, setUnseenCount] = useState(0);
 
   const { data: friendRequests, isLoading } = useQuery({
     queryKey: ["friendRequests"],
@@ -33,51 +33,55 @@ const NotificationsPage = () => {
   const acceptedRequests = (friendRequests?.acceptedReqs || []).filter(
     (notification) => notification.recipient && notification.recipient.fullName
   );
+
   const totalNotifications = incomingRequests.length + acceptedRequests.length;
 
+  // Fetch and mark notifications as seen on mount
 useEffect(() => {
- const markSeen = async () => {
-  try {
-    const res = await fetch("http://localhost:5001/api/users/friend-requests/mark-seen", {
-      method: "PUT",
-      credentials: "include", // if your backend uses cookies/auth
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  const markSeenAndShowToast = async () => {
+    try {
+      const res = await fetch("http://localhost:5001/api/users/friend-requests/mark-seen", {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (!res.ok) {
-      // log details for debugging
-      const text = await res.text();
-      console.error("Server responded with error:", res.status, text);
-      return;
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Mark seen error:", res.status, text);
+        return;
+      }
+
+      const data = await res.json();
+      const unseen = data.filter((n) => !n.seen);
+      setUnseenCount(unseen.length);
+
+      // ✅ Check for new unseen friend requests and toast the sender's name
+      const prevData = JSON.parse(localStorage.getItem("friendRequestNotifications")) || [];
+      const newOnes = data.filter(
+        (n) => !prevData.some((old) => old._id === n._id) && n.sender?.fullName
+      );
+
+      newOnes.forEach((n) => {
+        toast.success(`New friend request from ${n.sender.fullName}`, {
+          id: `friend-${n._id}`,
+        });
+      });
+
+      // ✅ Update localStorage and trigger refresh
+      localStorage.setItem("friendRequestNotifications", JSON.stringify(data));
+      window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new Event("friend-request-updated"));
+    } catch (error) {
+      console.error("Error marking notifications as seen:", error);
     }
+  };
 
-    const data = await res.json();
-
-    if (!Array.isArray(data)) {
-      console.warn("Expected array but got:", data);
-      return;
-    }
-
-    const updated = data.map((n) => ({
-      ...n,
-      type: n.status === "accepted" ? "friend_accept" : "friend_request",
-      seen: false,
-    }));
-
-    localStorage.setItem("friendRequestNotifications", JSON.stringify(updated));
-    window.dispatchEvent(new Event("storage"));
-
-  } catch (error) {
-    console.error("Polling error:", error);
-  }
-};
-
-  markSeen();
+  markSeenAndShowToast();
 }, []);
 
- 
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -85,9 +89,12 @@ useEffect(() => {
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6 flex items-center gap-2">
           Notifications
           {totalNotifications > 0 && (
-            <span className="badge badge-success text-black text-xs">
+            <span className="badge badge-success text-black text-xs rounded">
               {totalNotifications}
             </span>
+          )}
+          {unseenCount > 0 && (
+            <span className="ml-2 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
           )}
         </h1>
 
@@ -102,7 +109,7 @@ useEffect(() => {
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                   <UserCheckIcon className="h-5 w-5 text-success" />
                   Friend Requests
-                  <span className="badge badge-success ml-2">
+                  <span className="badge badge-success ml-2 rounded">
                     {incomingRequests.length}
                   </span>
                 </h2>
@@ -116,10 +123,11 @@ useEffect(() => {
                       <div className="card-body p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="avatar w-14 h-14 rounded-full bg-base-300">
+                            <div className="avatar w-14 h-14  rounded-full bg-base-300">
                               <img
                                 src={request.sender.profilePic}
                                 alt={request.sender.fullName}
+                                className="  w-14 h-14 avatar rounded-full "
                               />
                             </div>
                             <div>
@@ -127,10 +135,10 @@ useEffect(() => {
                                 {request.sender.fullName}
                               </h3>
                               <div className="flex flex-wrap gap-1.5 mt-1">
-                                <span className="badge badge-success p-3 badge-sm">
+                                <span className="badge badge-success p-3 badge-sm rounded">
                                   Native: {request.sender.nativeLanguage}
                                 </span>
-                                <span className="badge badge-outline p-3 badge-sm">
+                                <span className="badge badge-outline p-3 badge-sm rounded">
                                   Learning: {request.sender.learningLanguage}
                                 </span>
                               </div>
@@ -138,7 +146,7 @@ useEffect(() => {
                           </div>
 
                           <button
-                            className="btn btn-success btn-sm"
+                            className="btn btn-success rounded btn-sm"
                             onClick={() => acceptRequestMutation(request._id)}
                             disabled={isPending}
                           >
@@ -152,7 +160,6 @@ useEffect(() => {
               </section>
             )}
 
-            {/* ACCEPTED REQS NOTIFICATONS */}
             {acceptedRequests.length > 0 && (
               <section className="space-y-4">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -202,9 +209,8 @@ useEffect(() => {
               </section>
             )}
 
-            {incomingRequests.length === 0 && acceptedRequests.length === 0 && (
-              <NoNotificationsFound />
-            )}
+            {incomingRequests.length === 0 &&
+              acceptedRequests.length === 0 && <NoNotificationsFound />}
           </>
         )}
       </div>

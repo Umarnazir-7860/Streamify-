@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlenghth: 6,  // Typo here, should be minlength (fix if needed)
+    minlength: 6, // ✅ fix spelling
   },
   bio: {
     type: String,
@@ -65,4 +65,5 @@ userSchema.methods.comparePassword = async function (password) {
   return isPasswordCorrect;
 };
 
-export const User = mongoose.model("User", userSchema);
+export const User = mongoose.models.User || mongoose.model("User", userSchema);
+

@@ -32,7 +32,7 @@ const useFriendRequestPolling = () => {
         updated.forEach((req) => {
           if (!previousRequestIds.current.has(req._id)) {
     toast.success(
-  `${req.sender?.fullName || "New"}  friend request`,
+  `${req.sender?.fullName || "New"}  sent friend request`,
   {
     position: "bottom-right",
   }
@@ -40,7 +40,7 @@ const useFriendRequestPolling = () => {
 
 
             console.log("Request Sender:", req.sender);
- console.log("Incoming Friend Requests:", data.incommingReqs);
+
 
             previousRequestIds.current.add(req._id);
           }

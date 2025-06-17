@@ -1,6 +1,12 @@
 import { Link, useLocation } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
-import { BellIcon, HomeIcon, ShipWheelIcon, UsersIcon } from "lucide-react";
+import {
+  BellIcon,
+  HomeIcon,
+  MessageSquare,
+  ShipWheelIcon,
+  Users2Icon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 const Sidebar = () => {
@@ -26,11 +32,8 @@ const Sidebar = () => {
 
     checkUnseen();
 
-    // ✅ Listen for custom event from polling hook
-    const handleRefresh = () => {
-      checkUnseen();
-    };
-
+    // ✅ Listen for custom event
+    const handleRefresh = () => checkUnseen();
     window.addEventListener("friend-request-updated", handleRefresh);
     return () =>
       window.removeEventListener("friend-request-updated", handleRefresh);
@@ -50,33 +53,49 @@ const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        {/* Home */}
         <Link
           to="/"
-          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${currentPath === "/" ? "btn-active" : ""}`}
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            currentPath === "/" ? "btn-active" : ""
+          }`}
         >
           <HomeIcon className="size-5 text-base-content opacity-70" />
           <span>Home</span>
         </Link>
 
-        {/* Friends */}
         <Link
           to="/chats"
-          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${currentPath === "/friends" ? "btn-active" : ""}`}
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            currentPath === "/friends" ? "btn-active" : ""
+          }`}
         >
-          <UsersIcon className="size-5 text-base-content opacity-70" />
+          <MessageSquare className="size-5 text-base-content opacity-70" />
           <span>Messages</span>
         </Link>
 
-        {/* Notifications */}
+        <Link
+          to="/group-chat"
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            currentPath === "/group-chat" ? "btn-active" : ""
+          }`}
+        >
+          <Users2Icon className="size-5 text-base-content opacity-70" />
+          <span>Groups</span>
+        </Link>
+
         <Link
           to="/notification"
-          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${currentPath === "/notification" ? "btn-active" : ""}`}
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            currentPath === "/notification" ? "btn-active" : ""
+          }`}
         >
           <div className="relative">
             <BellIcon className="size-5 text-base-content opacity-70" />
             {hasUnseenNotifications && (
-              <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-red-500 rounded-full ring-2 ring-base-200" />
+              <>
+                <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+                <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-red-500 rounded-full" />
+              </>
             )}
           </div>
           <span>Notifications</span>

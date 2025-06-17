@@ -1,72 +1,122 @@
 import jwt from 'jsonwebtoken';
 import {User} from '../models/user.models.js';
 import { upsertStreanUser } from '../lib/stream.js';
+
+// === Name-based fallback avatar ===
+function generateInitialsAvatar(fullName) {
+  const name = fullName.trim();
+  const initials = name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase();
+  const bgColor = stringToColor(name);
+  return `https://dummyimage.com/100x100/${bgColor.slice(1)}/fff&text=${initials}`;
+}
+
+function stringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xff;
+    color += (`00${value.toString(16)}`).substr(-2);
+  }
+  return color;
+}
+
+// === Signup Controller ===
 export async function signup(req, res) {
-   let { email, password, fullName } = req.body;
+  let { email, password, fullName } = req.body;
 
-// Remove extra spaces from inputs
-email = email.trim();
-password = password.trim();
-fullName = fullName.trim();
+  // Clean inputs
+  email = email.trim();
+  password = password.trim();
+  fullName = fullName.trim();
 
-   try {
+  try {
+    // Basic validation
     if (!email || !password || !fullName) {
-        return res.status(400).json({ message: 'All fields are required' });
-    }   
-    if(password.trim().length < 6) {
-        return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+      return res.status(400).json({ message: 'All fields are required' });
     }
-   const strictEmailRegex = /^[^\s@]+@[^\s@]+\.(com|net|org|edu|gov|io|co)$/i;
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ message: 'Password must be at least 6 characters long' });
+    }
 
-if (!strictEmailRegex.test(email)) {
-    return res.status(400).json({ message: "Invalid email format" });
-}
- const existingEmail = await User.findOne({email});
- if (existingEmail){
-     console.log("Email already exists, sending error response");
-    return res.status(400).json({ message: 'Email already exists ,please use a different email' })};
-    const index= Math.floor(Math.random() * 100)+1;
-    const randomAvatar =`https://avatar.iran.liara.run/public/${index}.png`;
-    const newUser =  new User({
-        email,
-        password,
-        fullName,
-        profilePic: randomAvatar
-  });
- try {
-  await upsertStreanUser({
-    id: newUser._id.toString(),
-    name: newUser.fullName,
-    image: newUser.profilePic || newUser.avatar || '', // fallback if profilePic is empty
-  });
+    const strictEmailRegex = /^[^\s@]+@[^\s@]+\.(com|net|org|edu|gov|io|co)$/i;
+    if (!strictEmailRegex.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
 
-  console.log(`✅ Stream user upserted successfully: ${newUser._id}`);
-} catch (error) {
-  console.error('❌ Error upserting Stream user:', error.message || error);
-}
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res
+        .status(400)
+        .json({ message: 'Email already exists, please use a different one' });
+    }
 
+    // === Handle profilePic ===
+    let profilePic = '';
+    if (req.file && req.file.path) {
+      // Image uploaded via Cloudinary
+      profilePic = req.file.path;
+    } else {
+      // No image → fallback avatar
+      profilePic = generateInitialsAvatar(fullName);
+    }
+
+    // === Create user ===
+    const newUser = new User({
+      email,
+      password,
+      fullName,
+      profilePic,
+    });
+
+    // === Upsert to Stream ===
+    try {
+      await upsertStreanUser({
+        id: newUser._id.toString(),
+        name: newUser.fullName,
+        image: newUser.profilePic || '',
+      });
+      console.log(`✅ Stream user upserted: ${newUser._id}`);
+    } catch (error) {
+      console.error('❌ Stream user upsert error:', error.message || error);
+    }
+
+    // Save in DB
     await newUser.save();
-    const token = jwt.sign({userId: newUser._id}, process.env.JWT_SECRET_KEY, {expiresIn: '7d'});
+
+    // === Create and send JWT ===
+    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET_KEY, {
+      expiresIn: '7d',
+    });
+
     res.cookie('jwt', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
     res.status(201).json({
-        message: 'User created successfully',
-        user: {
-            _id: newUser._id,
-            email: newUser.email,
-            fullName: newUser.fullName,
-            avatar: newUser.avatar
-        }
+      message: 'User created successfully',
+      user: {
+        _id: newUser._id,
+        email: newUser.email,
+        fullName: newUser.fullName,
+        profilePic: newUser.profilePic,
+      },
     });
-   } catch (error) {
-    console.log("Error in signup controller", error);
+  } catch (error) {
+    console.error('Error in signup:', error);
     res.status(500).json({ message: 'Internal server error' });
-    
-   }
+  }
 }
 export async function login(req, res) {
   try {
@@ -124,52 +174,30 @@ export function logout(req, res) {
     });
     res.status(200).json({ message: 'Logged out successfully' });
 }
-export async function onboard(req, res) {
- try {
-   const userId = req.user._id;
-   const { fullName,bio,  nativeLanguage, location, learningLanguage } = req.body;
-if (!fullName || !bio || !nativeLanguage || !location || !learningLanguage) {
-  return res.status(400).json({ 
-    message: 'All fields are required',
-    missingFields: [
-      !fullName && "fullName",
-      !bio && "bio",
-      !nativeLanguage && "nativeLanguage",
-      !learningLanguage && "learningLanguage",
-      !location && "location"
-    ].filter(Boolean)
-  });
-}
-const updatedUser= await User.findByIdAndUpdate(userId,{
-...req.body,
-isOnboarded:true},  {new: true});
-if (!updatedUser) {
-  return res.status(404).json({ message: 'User not found' });
-}
+export const onboard = async (req, res) => {
+  try {
+    const { fullName, bio, nativeLanguage, learningLanguage, location } = req.body;
 
-// Update the user in Stream
-try {
-  await upsertStreanUser({
-    id: updatedUser._id.toString(),
-    name: updatedUser.fullName,
-    image: updatedUser.profilePic || '', 
-  })
-  console.log(`✅ Stream user updated successfully: ${updatedUser._id}`);
-  
-} catch (streamError) {
-  console.error(' Error updating Stream user:', streamError.message || streamError);
-}
-res.status(200).json({
-  success: true,
-  message: 'User onboarded successfully',
-  user: updatedUser
-});
+    const profilePic = req.file ? req.file.path : null;
 
- } catch (error) {
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-    error: error.message || 'An unexpected error occurred'
-  });
- }
-}
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        fullName,
+        bio,
+        nativeLanguage,
+        learningLanguage,
+        location,
+        profilePic,
+        isOnboarded: true,
+      },
+      { new: true }
+    ).select("-password");
+
+    res.status(200).json({ message: "Onboarding successful", user });
+  } catch (error) {
+    console.error("Onboarding error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+

@@ -12,6 +12,8 @@ import Layout from "./components/Layout";
 import { useThemeStore } from "./store/useThemeStore";
 import useFriendRequestPolling from "./hooks/useFriendRequestPolling";
 import ChatListPage from "./components/ChatListPage";
+import GroupChatPage from "./pages/GroupChatPage";
+import EditProfilePage from "./components/EditProfilePage";
 
 function App() {
    // ✅ Enable polling
@@ -124,6 +126,19 @@ function App() {
             }
           />
 
+             <Route
+            path="/group-chat"
+            element={
+              isAuthenticated && isOnboarded ? (
+                <Layout showSidebar={true}>
+                <GroupChatPage />
+                </Layout>
+              ) : (
+                <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
+              )
+            }
+          />
+
           <Route
             path="/onboarding"
             element={
@@ -138,6 +153,8 @@ function App() {
               )
             }
           />
+          <Route path="/edit-profile" element={<EditProfilePage />} />
+
         </Routes>
       </div>
     </>

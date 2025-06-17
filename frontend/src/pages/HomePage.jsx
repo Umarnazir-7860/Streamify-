@@ -64,7 +64,7 @@ const HomePage = () => {
 
       const isAlreadySent =
         error?.response?.data?.message === "Friend request already exists.";
-        toast.success("Friend request already exists in your notifications.")
+      toast.success("Friend request already exists in your notifications.");
       if (isAlreadySent) {
         // Agar request already exist karti hai, to disable hi rehne do
         setOutgoingRequest((prev) => new Set(prev).add(userId));
@@ -88,19 +88,18 @@ const HomePage = () => {
     },
   });
 
-useEffect(() => {
-  const outgoingIds = new Set();
-  if (outgoingFriendsReqs && outgoingFriendsReqs.length > 0) {
-    outgoingFriendsReqs.forEach((req) => {
-      if (req.receiver) {
-        outgoingIds.add(req.receiver);
-      }
-    });
-    console.log("Fetched outgoing request IDs from API:", outgoingIds);
-    setOutgoingRequest(outgoingIds);
-  }
-}, [outgoingFriendsReqs]);
-
+  useEffect(() => {
+    const outgoingIds = new Set();
+    if (outgoingFriendsReqs && outgoingFriendsReqs.length > 0) {
+      outgoingFriendsReqs.forEach((req) => {
+        if (req.receiver) {
+          outgoingIds.add(req.receiver);
+        }
+      });
+      console.log("Fetched outgoing request IDs from API:", outgoingIds);
+      setOutgoingRequest(outgoingIds);
+    }
+  }, [outgoingFriendsReqs]);
 
   return (
     <div className="p-4 sm:p-6 lg:-8">
@@ -168,8 +167,12 @@ useEffect(() => {
                   >
                     <div className="card-body p-5 space-y-4">
                       <div className="flex items-center gap-3">
-                        <div className="avatar size-16 rounded-full">
-                          <img src={user.profilePic} alt={user.fullName} />
+                        <div className="w-16 h-16 rounded-full overflow-hidden">
+                          <img
+                            src={user.profilePic}
+                            alt={user.fullName}
+                            className="object-cover w-full h-full"
+                          />
                         </div>
 
                         <div>
@@ -248,5 +251,3 @@ useEffect(() => {
 };
 
 export default HomePage;
-
-
